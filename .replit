@@ -1,0 +1,17 @@
+modules = ["nodejs-22", "postgresql-16"]
+hidden = [".config", ".next", "node_modules"]
+
+[nix]
+channel = "stable-24_11"
+
+[deployment]
+build = ["npm", "run", "build"]
+run = ["npm", "run", "start"]
+deploymentTarget = "autoscale"
+
+[env]
+NEXT_TELEMETRY_DISABLED = "1"
+
+[[ports]]
+localPort = 3000
+externalPort = 80

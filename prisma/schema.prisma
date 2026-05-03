@@ -1,0 +1,318 @@
+// SiteOne Supplier Data Collection — Prisma schema
+// See ../.claude-memory/sdc-requirements.md for the decision log driving this shape.
+//
+// Key principles baked in:
+// - Identity (User) is split from credentials (PasswordCredential) so SSO can be added without rewriting (FC1).
+// - Sessions use a single store regardless of auth method, with role-based gating (D7).
+// - Soft-delete columns present from day one (FC6 — wipe recovery upgrade is additive).
+// - item_uom carries `source` flag (D19) and `removedAt` (D18 mid-campaign UOM removal preserves vendor data).
+// - audit_log captures coarse events only (D20); indexed on (occurredAt) and (actorUserId, occurredAt).
+// - field_rule table stores config-driven validation (D22, FC9).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Identity & Auth ────────────────────────────────────────────────────────
+
+enum UserRole {
+  ADMIN
+  SUPPLIER
+}
+
+enum AuthMethod {
+  PASSWORD
+  SSO
+}
+
+model User {
+  id             String     @id @default(cuid())
+  email          String     @unique
+  name           String?
+  role           UserRole
+  authMethod     AuthMethod @default(PASSWORD)
+  active         Boolean    @default(true)
+  vendorId       String? // null for ADMIN; required for SUPPLIER (enforced in app code)
+  vendor         Vendor?    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  lastLoginAt    DateTime?
+  failedAttempts Int        @default(0)
+  lockedUntil    DateTime?
+
+  credential       PasswordCredential?
+  sessions         Session[]
+  kickoffTokens    KickoffToken[]
+  passwordResets   PasswordResetToken[]
+  uploadHistories  UploadHistory[]
+  auditLogsAsActor AuditLog[]           @relation("ActorUser")
+  submittedItems   Item[]               @relation("SubmittedBy")
+
+  @@index([role])
+  @@index([vendorId])
+  @@map("users")
+}
+
+model PasswordCredential {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  passwordHash  String
+  createdAt     DateTime @default(now())
+  lastChangedAt DateTime @default(now())
+
+  @@map("password_credentials")
+}
+
+model Session {
+  id          String   @id // cryptographically-random opaque id; stored as cookie value
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+  lastSeenAt  DateTime @default(now())
+  ipAddress   String?
+  userAgent   String?
+  // Heartbeat-tracked active duration (D20 time-on-app); incremented every heartbeat tick.
+  activeMs    Int      @default(0)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model KickoffToken {
+  id        String    @id @default(cuid())
+  token     String    @unique // url-safe random; never reissued
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  @@index([userId])
+  @@map("kickoff_tokens")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  token     String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+// ─── Domain: Vendors, Items, UOMs ───────────────────────────────────────────
+
+model Vendor {
+  id         String   @id // VendorID from upload (the SiteOne internal vendor identifier)
+  name       String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  // No active flag — vendor presence is implied by item presence.
+
+  contacts User[] // role=SUPPLIER users
+  items    Item[]
+  auditLog AuditLog[]
+
+  @@map("vendors")
+}
+
+model UomMaster {
+  code           String   @id // e.g., "EA", "CS", "PL"
+  name           String // "Each", "Case", "Pallet"
+  defaultEdiUom  String
+  active         Boolean  @default(true)
+  displayOrder   Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  itemUoms ItemUom[]
+
+  @@map("uom_master")
+}
+
+model Item {
+  skuId              String    @id // composite-key candidate per Convo.txt; using as PK for simplicity
+  pimItemNumber      String
+  vendorId           String
+  vendor             Vendor    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  productName        String
+  brandName          String?
+  taxonomyClassPath  String?
+  mfgPartNumber      String?
+  imageUrl           String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  wipedAt            DateTime? // FC6 soft-delete column (POC hard-deletes; column reserved for future)
+  submittedAt        DateTime?
+  submittedByUserId  String?
+  submittedBy        User?     @relation("SubmittedBy", fields: [submittedByUserId], references: [id], onDelete: SetNull)
+
+  itemUoms ItemUom[]
+  auditLog AuditLog[]
+
+  @@index([vendorId])
+  @@index([submittedAt])
+  @@map("items")
+}
+
+enum ItemUomSource {
+  FILE
+  ADDED
+}
+
+model ItemUom {
+  id                 String        @id @default(cuid())
+  skuId              String
+  item               Item          @relation(fields: [skuId], references: [skuId], onDelete: Cascade)
+  uomCode            String
+  uom                UomMaster     @relation(fields: [uomCode], references: [code], onDelete: Restrict)
+  source             ItemUomSource @default(FILE)
+  position           Int           @default(0) // display order within item
+
+  // Identifier fields
+  uomQuantity        Float?
+  barcode            String?
+  barcodeWaived      Boolean       @default(false)
+  ediUom             String?
+
+  // Dimensions
+  length             Float?
+  lengthUnit         String? // "IN" | "FT"
+  width              Float?
+  widthUnit          String?
+  height             Float?
+  heightUnit         String?
+  weight             Float? // always lbs
+
+  // Logistics
+  freightClass       String?
+  nestable           Boolean?
+  nestableIncrement  Int?
+  layFlat            Boolean?
+  stackable          Boolean? // pallet only
+  ti                 Int? // pallet only
+  hi                 Int? // pallet only
+
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  removedAt          DateTime? // D18: soft-delete when re-upload removes a UOM that had vendor data
+
+  @@unique([skuId, uomCode])
+  @@index([skuId])
+  @@index([source])
+  @@map("item_uoms")
+}
+
+// ─── Validation rules (D22, FC9) ───────────────────────────────────────────
+
+model FieldRule {
+  id                       String  @id @default(cuid())
+  fieldKey                 String  @unique // e.g., "weight", "length", "freightClass"
+  uiLabel                  String
+  section                  String // "identifiers" | "dimensions" | "logistics"
+  required                 Boolean @default(false)
+  formatRegex              String?
+  allowedValues            Json? // for enum-like fields
+  conditionalRequiredWhen  Json? // e.g., {"field": "nestable", "equals": true}
+  applicableToUomCodes     Json? // null = all UOMs; array = specific UOMs (e.g., ["PL"] for Pallet-only)
+  displayOrder             Int     @default(0)
+
+  @@map("field_rules")
+}
+
+// ─── Upload history (D8/D10) ───────────────────────────────────────────────
+
+enum UploadType {
+  ITEMS
+  CONTACTS
+  UOM_MASTER
+}
+
+enum UploadStatus {
+  PENDING
+  COMMITTED
+  FAILED
+}
+
+model UploadHistory {
+  id              String       @id @default(cuid())
+  type            UploadType
+  filename        String
+  uploadedById    String
+  uploadedBy      User         @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  uploadedAt      DateTime     @default(now())
+  status          UploadStatus @default(PENDING)
+  rowCount        Int?
+  insertedCount   Int?
+  updatedCount    Int?
+  unchangedCount  Int?
+  errorCount      Int?
+  errors          Json? // array of { row, field, message }
+  warnings        Json?
+
+  @@index([uploadedAt])
+  @@map("upload_history")
+}
+
+// ─── Audit log (D20) ───────────────────────────────────────────────────────
+
+enum AuditEventType {
+  // Auth
+  LOGIN_SUCCESS
+  LOGIN_FAILURE
+  LOGOUT
+  PASSWORD_RESET_REQUEST
+  PASSWORD_RESET_COMPLETE
+  KICKOFF_TOKEN_REDEEM
+  // Session
+  SESSION_START
+  SESSION_END
+  // Item lifecycle
+  ITEM_OPENED
+  ITEM_SUBMITTED
+  // UOM provenance
+  UOM_ADDED
+  UOM_REMOVED
+  // Admin
+  FILE_UPLOAD
+  KICKOFF_CSV_DOWNLOAD
+  PIM_EXPORT
+  WIPE_ITEMS
+  WIPE_CONTACTS
+  CONTACT_REVOCATION
+  ITEM_REVOCATION
+  ADMIN_LOGIN
+}
+
+model AuditLog {
+  id            BigInt         @id @default(autoincrement())
+  eventType     AuditEventType
+  actorUserId   String?
+  actor         User?          @relation("ActorUser", fields: [actorUserId], references: [id], onDelete: SetNull)
+  vendorId      String?
+  vendor        Vendor?        @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  itemId        String?
+  item          Item?          @relation(fields: [itemId], references: [skuId], onDelete: SetNull)
+  uomCode       String?
+  eventData     Json?
+  occurredAt    DateTime       @default(now())
+  ipAddress     String?
+
+  @@index([occurredAt])
+  @@index([actorUserId, occurredAt])
+  @@index([vendorId, occurredAt])
+  @@index([eventType])
+  @@map("audit_log")
+}

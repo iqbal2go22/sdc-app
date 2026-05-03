@@ -1,0 +1,118 @@
+@import "tailwindcss";
+
+:root {
+  /* ── SiteOne brand palette (locked per Convo.txt) ── */
+  --siteone-green:     #57810E;
+  --siteone-gray:      #414244;
+  --siteone-blue:      #437C96;
+  --siteone-dark-blue: #244C5A;
+  --siteone-green-gray:#677A69;
+  --siteone-warm-gray: #AEA29A;
+  --siteone-safety:    #DAE343;
+
+  --green-light:  rgba(87,129,14,0.08);
+  --green-mid:    #6a9a10;
+  --green-dark:   #3f5e09;
+  --blue-light:   rgba(67,124,150,0.1);
+  --safety-dim:   rgba(218,227,67,0.25);
+
+  --off-white:    #f4f3f0;
+  --cream:        #eceae4;
+  --border:       #ddd9d4;
+  --red:          #b03a2e;
+  --shadow-sm:    0 1px 4px rgba(36,76,90,0.08);
+  --shadow:       0 3px 14px rgba(36,76,90,0.1);
+  --shadow-lg:    0 8px 32px rgba(36,76,90,0.14);
+
+  --background: var(--off-white);
+  --foreground: #1e1e1e;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-siteone-green: var(--siteone-green);
+  --color-siteone-gray: var(--siteone-gray);
+  --color-siteone-blue: var(--siteone-blue);
+  --color-siteone-dark-blue: var(--siteone-dark-blue);
+  --color-siteone-green-gray: var(--siteone-green-gray);
+  --color-siteone-warm-gray: var(--siteone-warm-gray);
+  --color-siteone-safety: var(--siteone-safety);
+  --color-cream: var(--cream);
+  --color-off-white: var(--off-white);
+  --font-sans: ui-sans-serif, system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Component utilities */
+.btn-primary {
+  background: var(--siteone-green);
+  color: white;
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-radius: 0.375rem;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-primary:hover { background: var(--green-dark); }
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: white;
+  color: var(--siteone-gray);
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-radius: 0.375rem;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-secondary:hover { border-color: var(--siteone-warm-gray); }
+
+.btn-danger {
+  background: var(--red);
+  color: white;
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-radius: 0.375rem;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-danger:hover { background: #8a2d22; }
+.btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  background: white;
+  color: var(--foreground);
+  font-family: inherit;
+}
+.input:focus {
+  outline: none;
+  border-color: var(--siteone-green);
+  box-shadow: 0 0 0 3px rgba(87,129,14,0.15);
+}
+.input:disabled {
+  background: var(--cream);
+  color: var(--siteone-warm-gray);
+}
