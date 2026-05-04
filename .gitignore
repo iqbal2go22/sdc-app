@@ -42,3 +42,8 @@ next-env.d.ts
 
 /src/generated/prisma
 .gh-auth.log
+
+# Replit-managed files — let Replit manage these in each Repl rather than
+# committing project versions that fight Replit's auto-generated configs.
+.replit
+replit.nix
