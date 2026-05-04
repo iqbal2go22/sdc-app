@@ -6,6 +6,8 @@ import { createSession } from "@/lib/auth/session";
 import { isLocked, recordLoginFailure, clearLockout } from "@/lib/auth/lockout";
 import { logEvent } from "@/lib/db/audit";
 
+// Handles BOTH application/json (programmatic clients) and form-encoded posts
+// (the login page submits natively to dodge Next 16 dev-mode hydration flakiness).
 const Body = z.object({
   email: z.string().email(),
   password: z.string().min(1),
@@ -14,15 +16,31 @@ const Body = z.object({
 export async function POST(request: NextRequest) {
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? null;
   const userAgent = request.headers.get("user-agent") ?? null;
+  const contentType = request.headers.get("content-type") || "";
+  const isFormSubmit =
+    contentType.includes("application/x-www-form-urlencoded") ||
+    contentType.includes("multipart/form-data");
 
-  let parsed;
+  let email: string;
+  let password: string;
   try {
-    parsed = Body.parse(await request.json());
+    if (isFormSubmit) {
+      const fd = await request.formData();
+      const parsed = Body.parse({
+        email: String(fd.get("email") ?? ""),
+        password: String(fd.get("password") ?? ""),
+      });
+      email = parsed.email;
+      password = parsed.password;
+    } else {
+      const parsed = Body.parse(await request.json());
+      email = parsed.email;
+      password = parsed.password;
+    }
   } catch {
-    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+    return fail(request, isFormSubmit, "Invalid request", 400);
   }
 
-  const { email, password } = parsed;
   const user = await prisma.user.findUnique({
     where: { email: email.toLowerCase() },
     include: { credential: true },
@@ -33,7 +51,7 @@ export async function POST(request: NextRequest) {
 
   if (!user || !user.active || !user.credential) {
     await logEvent({ eventType: "LOGIN_FAILURE", ipAddress: ip, eventData: { email } });
-    return NextResponse.json({ error: GENERIC_FAIL }, { status: 401 });
+    return fail(request, isFormSubmit, GENERIC_FAIL, 401);
   }
 
   if (isLocked(user)) {
@@ -43,9 +61,11 @@ export async function POST(request: NextRequest) {
       ipAddress: ip,
       eventData: { reason: "locked" },
     });
-    return NextResponse.json(
-      { error: "Account is temporarily locked. Try again later." },
-      { status: 423 },
+    return fail(
+      request,
+      isFormSubmit,
+      "Account is temporarily locked. Try again later.",
+      423,
     );
   }
 
@@ -57,7 +77,7 @@ export async function POST(request: NextRequest) {
       actorUserId: user.id,
       ipAddress: ip,
     });
-    return NextResponse.json({ error: GENERIC_FAIL }, { status: 401 });
+    return fail(request, isFormSubmit, GENERIC_FAIL, 401);
   }
 
   await clearLockout(user.id);
@@ -75,8 +95,24 @@ export async function POST(request: NextRequest) {
     ipAddress: ip,
   });
 
-  return NextResponse.json({
-    ok: true,
-    redirectTo: user.role === "ADMIN" ? "/admin" : "/supplier",
-  });
+  const redirectTo = user.role === "ADMIN" ? "/admin" : "/supplier";
+
+  if (isFormSubmit) {
+    return NextResponse.redirect(new URL(redirectTo, request.url), { status: 303 });
+  }
+  return NextResponse.json({ ok: true, redirectTo });
+}
+
+function fail(
+  request: NextRequest,
+  isFormSubmit: boolean,
+  message: string,
+  status: number,
+) {
+  if (isFormSubmit) {
+    const url = new URL("/login", request.url);
+    url.searchParams.set("error", message);
+    return NextResponse.redirect(url, { status: 303 });
+  }
+  return NextResponse.json({ error: message }, { status });
 }
