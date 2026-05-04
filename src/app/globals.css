@@ -52,67 +52,72 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Component utilities */
-.btn-primary {
-  background: var(--siteone-green);
-  color: white;
-  padding: 0.625rem 1.25rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  border-radius: 0.375rem;
-  border: none;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.btn-primary:hover { background: var(--green-dark); }
-.btn-primary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+/* Component utilities — wrapped in @layer components so Tailwind utility classes
+ * (which live in @layer utilities) take precedence when both target the same prop.
+ * Without this, plain CSS rules below "@import tailwindcss" would beat utilities
+ * like `w-[56px]` because of source-order specificity. */
+@layer components {
+  .btn-primary {
+    background: var(--siteone-green);
+    color: white;
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    border-radius: 0.375rem;
+    border: none;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn-primary:hover { background: var(--green-dark); }
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 
-.btn-secondary {
-  background: white;
-  color: var(--siteone-gray);
-  padding: 0.625rem 1.25rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  border-radius: 0.375rem;
-  border: 1px solid var(--border);
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.btn-secondary:hover { border-color: var(--siteone-warm-gray); }
+  .btn-secondary {
+    background: white;
+    color: var(--siteone-gray);
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    border-radius: 0.375rem;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-secondary:hover { border-color: var(--siteone-warm-gray); }
 
-.btn-danger {
-  background: var(--red);
-  color: white;
-  padding: 0.625rem 1.25rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  border-radius: 0.375rem;
-  border: none;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.btn-danger:hover { background: #8a2d22; }
-.btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-danger {
+    background: var(--red);
+    color: white;
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    border-radius: 0.375rem;
+    border: none;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn-danger:hover { background: #8a2d22; }
+  .btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.input {
-  width: 100%;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.875rem;
-  border: 1px solid var(--border);
-  border-radius: 0.375rem;
-  background: white;
-  color: var(--foreground);
-  font-family: inherit;
-}
-.input:focus {
-  outline: none;
-  border-color: var(--siteone-green);
-  box-shadow: 0 0 0 3px rgba(87,129,14,0.15);
-}
-.input:disabled {
-  background: var(--cream);
-  color: var(--siteone-warm-gray);
+  .input {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    border: 1px solid var(--border);
+    border-radius: 0.375rem;
+    background: white;
+    color: var(--foreground);
+    font-family: inherit;
+  }
+  .input:focus {
+    outline: none;
+    border-color: var(--siteone-green);
+    box-shadow: 0 0 0 3px rgba(87,129,14,0.15);
+  }
+  .input:disabled {
+    background: var(--cream);
+    color: var(--siteone-warm-gray);
+  }
 }

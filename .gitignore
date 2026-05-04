@@ -47,3 +47,6 @@ next-env.d.ts
 # committing project versions that fight Replit's auto-generated configs.
 .replit
 replit.nix
+
+# Visual-test scratch outputs (generated; never commit)
+scripts/visual-test-output/
