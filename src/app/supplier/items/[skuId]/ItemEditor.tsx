@@ -408,7 +408,7 @@ function UomCard({
   const hasIssues = issues.length > 0;
 
   return (
-    <div className="flex-shrink-0 w-[420px] bg-white rounded-lg shadow flex flex-col">
+    <div className="flex-shrink-0 w-[460px] bg-white rounded-lg shadow flex flex-col">
       <div className="bg-siteone-gray text-white px-4 py-3 rounded-t-lg flex items-center justify-between">
         <div className="flex items-center gap-3">
           <span className="bg-siteone-safety text-siteone-green font-mono font-bold text-xs px-2 py-1 rounded">
@@ -710,14 +710,14 @@ function DimField({
           value={value ?? ""}
           disabled={disabled}
           onChange={(e) => onValue(e.target.value === "" ? null : Number(e.target.value))}
-          className="input flex-1"
+          className="input flex-1 min-w-0"
           placeholder="0.00"
         />
         <select
           value={unit}
           disabled={disabled}
           onChange={(e) => onUnit(e.target.value)}
-          className="input w-16"
+          className="input w-[56px] flex-shrink-0 px-1.5 text-xs"
         >
           <option value="IN">IN</option>
           <option value="FT">FT</option>
