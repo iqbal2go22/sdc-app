@@ -255,8 +255,11 @@ export function ItemEditor({
         </span>
       </div>
 
-      {/* ── UOM cards — horizontal row ── */}
-      <div className="flex gap-4 overflow-x-auto pb-2">
+      {/* ── UOM cards — horizontal grid with subgrid alignment ──
+       * Each UOM card declares 4 grid rows (header / identifiers / dimensions / logistics).
+       * The parent grid defines those rows so every card's section starts at the same Y,
+       * regardless of how much content is inside. */}
+      <div className="grid grid-flow-col auto-cols-[460px] grid-rows-[auto_auto_auto_auto] gap-x-4 gap-y-0 overflow-x-auto pb-2">
         {uoms.map((u) => (
           <UomCard
             key={u.uomCode}
@@ -268,17 +271,15 @@ export function ItemEditor({
           />
         ))}
         {!item.submittedAt && (
-          <div className="flex-shrink-0 w-44">
-            <button
-              type="button"
-              onClick={() => setShowAddPicker(true)}
-              disabled={addable.length === 0}
-              className="w-full h-full min-h-[400px] border-2 border-dashed border-siteone-warm-gray rounded-lg flex flex-col items-center justify-center text-siteone-warm-gray hover:border-siteone-green hover:text-siteone-green disabled:opacity-30 disabled:cursor-not-allowed"
-            >
-              <span className="text-5xl font-light">+</span>
-              <span className="text-sm mt-2 font-medium">Add UOM</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setShowAddPicker(true)}
+            disabled={addable.length === 0}
+            className="row-span-4 self-stretch w-44 border-2 border-dashed border-siteone-warm-gray rounded-lg flex flex-col items-center justify-center text-siteone-warm-gray hover:border-siteone-green hover:text-siteone-green disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            <span className="text-5xl font-light">+</span>
+            <span className="text-sm mt-2 font-medium">Add UOM</span>
+          </button>
         )}
       </div>
 
@@ -408,8 +409,8 @@ function UomCard({
   const hasIssues = issues.length > 0;
 
   return (
-    <div className="flex-shrink-0 w-[460px] bg-white rounded-lg shadow flex flex-col">
-      <div className="bg-siteone-gray text-white px-4 py-3 rounded-t-lg flex items-center justify-between">
+    <div className="grid grid-rows-subgrid row-span-4 bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-siteone-gray text-white px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <span className="bg-siteone-safety text-siteone-green font-mono font-bold text-xs px-2 py-1 rounded">
             {uom.uomCode}
@@ -652,7 +653,15 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className={cn("p-4 border-b border-[var(--border)] last:border-b-0", tint)}>
+    <div
+      className={cn(
+        // Each section is a grid row inside the card; flex column inside lets
+        // the section grow (via the spacer at the bottom) so its tinted bg
+        // fills the row height assigned by subgrid.
+        "p-4 border-t border-[var(--border)] flex flex-col",
+        tint,
+      )}
+    >
       <div className="text-[10px] uppercase tracking-wider text-siteone-green-gray font-semibold mb-3">
         {label}
       </div>
