@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 type Impact = { label: string; count: number; scope?: string };
 type Props = {
-  kind: "ITEMS" | "CONTACTS";
+  kind: "ITEMS" | "CONTACTS" | "VENDORS";
   title: string;
   confirmPhrase: string;
   impact: Impact[];

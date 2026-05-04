@@ -51,6 +51,7 @@ export default async function AuditLogPage({
     "PIM_EXPORT",
     "WIPE_ITEMS",
     "WIPE_CONTACTS",
+    "WIPE_VENDORS",
     "CONTACT_REVOCATION",
     "ITEM_REVOCATION",
     "ADMIN_LOGIN",

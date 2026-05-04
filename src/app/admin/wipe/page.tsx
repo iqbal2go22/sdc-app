@@ -36,17 +36,18 @@ export default async function WipePage() {
           Wipe operations
         </h1>
         <p className="text-sm text-siteone-green-gray mt-1">
-          Nuclear reset. Both wipes are permanent and require typing the exact phrase to confirm.
+          Permanent destructive actions. Each requires typing the exact phrase to confirm.
         </p>
       </div>
 
       <div className="bg-red-50 border border-red-200 rounded p-4 text-sm text-red-900">
-        <strong>Read this before clicking anything.</strong> These actions hard-delete data with no
-        undo. Audit log entries are preserved (per D12). Vendors are not directly deleted — they will
-        be re-created from the next items upload.
+        <strong>Read this before clicking anything.</strong> All actions hard-delete data with no
+        undo. Audit log entries are preserved. Use <strong>Wipe everything</strong> when you want a
+        truly blank slate before a new campaign — it cascades through vendors and removes items and
+        supplier contacts as well.
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <WipeCard
           kind="ITEMS"
           title="Wipe all items"
@@ -66,6 +67,19 @@ export default async function WipePage() {
             { label: "Active contacts", count: contactCount },
             { label: "Active sessions (will be terminated)", count: activeSessionCount },
             { label: "Pending kickoff tokens (will be invalidated)", count: pendingTokenCount },
+          ]}
+        />
+        <WipeCard
+          kind="VENDORS"
+          title="Wipe everything"
+          confirmPhrase="WIPE EVERYTHING"
+          impact={[
+            { label: "Vendors", count: vendorCount },
+            { label: "Items (cascade)", count: itemCount },
+            { label: "Item-UOM rows (cascade)", count: itemUomCount },
+            { label: "Supplier contacts (cascade)", count: contactCount },
+            { label: "Active sessions (cascade)", count: activeSessionCount },
+            { label: "Pending kickoff tokens (cascade)", count: pendingTokenCount },
           ]}
         />
       </div>

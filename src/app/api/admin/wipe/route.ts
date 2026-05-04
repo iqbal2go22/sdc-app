@@ -5,11 +5,15 @@ import { requireAdmin } from "@/lib/auth/session";
 import { logEvent } from "@/lib/db/audit";
 
 const Body = z.object({
-  kind: z.enum(["ITEMS", "CONTACTS"]),
+  kind: z.enum(["ITEMS", "CONTACTS", "VENDORS"]),
   confirm: z.string().min(1),
 });
 
-const PHRASES = { ITEMS: "WIPE ITEMS", CONTACTS: "WIPE CONTACTS" } as const;
+const PHRASES = {
+  ITEMS: "WIPE ITEMS",
+  CONTACTS: "WIPE CONTACTS",
+  VENDORS: "WIPE EVERYTHING",
+} as const;
 
 export async function POST(request: Request) {
   let admin;
@@ -42,7 +46,7 @@ export async function POST(request: Request) {
       actorUserId: admin.id,
       eventData: { deletedItems: itemCount },
     });
-  } else {
+  } else if (kind === "CONTACTS") {
     const beforeContacts = await prisma.user.count({ where: { role: "SUPPLIER" } });
     const beforeSessions = await prisma.session.count({ where: { user: { role: "SUPPLIER" } } });
     const beforeTokens = await prisma.kickoffToken.count({ where: { usedAt: null } });
@@ -58,6 +62,25 @@ export async function POST(request: Request) {
         deletedContacts: beforeContacts,
         terminatedSessions: beforeSessions,
         invalidatedTokens: beforeTokens,
+      },
+    });
+  } else {
+    // VENDORS — nuclear reset. Cascade FKs delete items, item_uom, supplier users,
+    // sessions, kickoff/reset tokens. Audit log and admin users persist.
+    const beforeVendors = await prisma.vendor.count();
+    const beforeItems = await prisma.item.count();
+    const beforeContacts = await prisma.user.count({ where: { role: "SUPPLIER" } });
+
+    await prisma.vendor.deleteMany({});
+    deletedCount = beforeVendors;
+
+    await logEvent({
+      eventType: "WIPE_VENDORS",
+      actorUserId: admin.id,
+      eventData: {
+        deletedVendors: beforeVendors,
+        cascadedItems: beforeItems,
+        cascadedContacts: beforeContacts,
       },
     });
   }
