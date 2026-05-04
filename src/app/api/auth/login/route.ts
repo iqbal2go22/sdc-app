@@ -5,6 +5,7 @@ import { verifyPassword } from "@/lib/auth/password";
 import { createSession } from "@/lib/auth/session";
 import { isLocked, recordLoginFailure, clearLockout } from "@/lib/auth/lockout";
 import { logEvent } from "@/lib/db/audit";
+import { publicUrl } from "@/lib/url";
 
 // Handles BOTH application/json (programmatic clients) and form-encoded posts
 // (the login page submits natively to dodge Next 16 dev-mode hydration flakiness).
@@ -98,7 +99,7 @@ export async function POST(request: NextRequest) {
   const redirectTo = user.role === "ADMIN" ? "/admin" : "/supplier";
 
   if (isFormSubmit) {
-    return NextResponse.redirect(new URL(redirectTo, request.url), { status: 303 });
+    return NextResponse.redirect(publicUrl(request, redirectTo), { status: 303 });
   }
   return NextResponse.json({ ok: true, redirectTo });
 }
@@ -110,9 +111,9 @@ function fail(
   status: number,
 ) {
   if (isFormSubmit) {
-    const url = new URL("/login", request.url);
-    url.searchParams.set("error", message);
-    return NextResponse.redirect(url, { status: 303 });
+    const target = new URL(publicUrl(request, "/login"));
+    target.searchParams.set("error", message);
+    return NextResponse.redirect(target.toString(), { status: 303 });
   }
   return NextResponse.json({ error: message }, { status });
 }
